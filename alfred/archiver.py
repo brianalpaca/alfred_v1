@@ -1,18 +1,16 @@
 import re
+import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-
-import anthropic
 
 from config.settings import ARCHIVES_PATH, MODEL
 from .db import get_connection
 
 
-_ARCHIVE_SYSTEM = """\
-You are summarizing a conversation for long-term memory. Output structured QMD.
+_SUMMARIZE_PROMPT = """\
+Summarize this conversation as a QMD archive. Output exactly this format:
 
-Format exactly:
 ---
 title: Session Archive
 date: {date}
@@ -37,6 +35,9 @@ token_count: {token_count}
 ```
 relevant code or commands only
 ```
+
+Conversation to summarize:
+{conversation}
 """
 
 
@@ -44,7 +45,6 @@ def archive_conversation(
     messages: list[dict],
     session_id: int,
     token_count: int,
-    client: anthropic.Anthropic,
 ) -> Optional[str]:
     ARCHIVES_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -55,24 +55,25 @@ def archive_conversation(
         f"**{m['role'].upper()}:** {m['content']}" for m in messages
     )
 
-    system = _ARCHIVE_SYSTEM.format(
+    prompt = _SUMMARIZE_PROMPT.format(
         date=datetime.now().strftime("%Y-%m-%d"),
         token_count=token_count,
+        conversation=conversation_text,
     )
 
     try:
-        response = client.messages.create(
-            model=MODEL,
-            max_tokens=2048,
-            system=system,
-            messages=[{"role": "user", "content": f"Summarize:\n\n{conversation_text}"}],
+        result = subprocess.run(
+            ["claude", "-p", prompt, "--output-format", "text"],
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
-    except anthropic.APIError as e:
+        result.check_returncode()
+        qmd_content = result.stdout.strip()
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
         raise RuntimeError(f"Archive summarization failed: {e}") from e
 
-    qmd_content = response.content[0].text
     qmd_path.write_text(qmd_content, encoding="utf-8")
-
     _index_archive(session_id, str(qmd_path), qmd_content)
     return str(qmd_path)
 

@@ -17,6 +17,7 @@ def init_db() -> None:
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS sessions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                claude_session_id TEXT UNIQUE,
                 started_at TEXT NOT NULL,
                 ended_at TEXT,
                 summary TEXT,
