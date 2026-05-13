@@ -19,7 +19,7 @@ if ! command -v python3 &>/dev/null; then
 fi
 
 # Install dependencies
-pip install -q -r "$(dirname "$0")/requirements.txt"
+pip3 install -q -r "$(dirname "$0")/requirements.txt"
 
 # Inject hook via Python (safe JSON merge, no overwrite of existing settings)
 python3 - "$SETTINGS" "$HOOK_SCRIPT" <<'EOF'
