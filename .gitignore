@@ -1,0 +1,15 @@
+.env
+*.db
+*.sqlite
+archives/
+data/
+__pycache__/
+*.pyc
+.DS_Store
+obsidian-brain/
+*.key
+*.pem
+.venv/
+venv/
+*.log
+config/secrets.py
